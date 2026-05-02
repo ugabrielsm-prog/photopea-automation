@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; color: white; background: #333; padding: 10px; }
+        button { background: #1a73e8; color: white; border: none; padding: 10px; cursor: pointer; width: 100%; }
+        button:hover { background: #1557b0; }
+    </style>
+</head>
+<body>
+    <h3>Automação de Camadas</h3>
+    <p>1. Abra seus arquivos PSD.</p>
+    <p>2. Clique no botão abaixo para organizar, indexar e exportar.</p>
+    <button onclick="enviarScript()">EXECUTAR LOTE</button>
+
+    <script>
+        function enviarScript() {
+            // O script completo que unificamos (Limpeza + Índice + Exportação)
+            const meuScript = `
+                function processar() {
+                    var doc = app.activeDocument;
+                    
+                    // Organização
+                    var arteFolder = null;
+                    for (var i = 0; i < doc.layers.length; i++) {
+                        if (doc.layers[i].name === "arte") { arteFolder = doc.layers[i]; break; }
+                    }
+                    if (!arteFolder) { arteFolder = doc.layerSets.add(); arteFolder.name = "arte"; }
+
+                    function mover(origem, destino) {
+                        for (var j = origem.length - 1; j >= 0; j--) {
+                            var layer = origem[j];
+                            if (layer === arteFolder) continue;
+                            if (layer.typename === "LayerSet") {
+                                mover(layer.layers, destino);
+                                layer.remove();
+                            } else {
+                                layer.move(destino, ElementPlacement.INSIDE);
+                            }
+                        }
+                    }
+                    mover(doc.layers, arteFolder);
+
+                    // Indexação
+                    var camadas = arteFolder.layers;
+                    for (var k = camadas.length - 1; k >= 0; k--) {
+                        var idx = String(camadas.length - k).padStart(2, "0");
+                        camadas[k].name = idx + " - " + camadas[k].name;
+                    }
+
+                    // Exportação
+                    doc.saveToOE("psd");
+                    for (var m = 0; m < camadas.length; m++) {
+                        for (var x = 0; x < camadas.length; x++) { camadas[x].visible = false; }
+                        camadas[m].visible = true;
+                        try { doc.trim(TrimType.TRANSPARENT); } catch(e) {}
+                        doc.saveToOE("png");
+                        doc.activeHistoryState = doc.historyStates[doc.historyStates.length - 2];
+                    }
+                }
+                processar();
+            `;
+            
+            // Envia para o Photopea conforme a documentação: window.parent.postMessage
+            window.parent.postMessage(meuScript, "*");
+        }
+    </script>
+</body>
+</html>
